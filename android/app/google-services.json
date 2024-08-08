@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "545589373174",
+    "project_id": "micelioapp",
+    "storage_bucket": "micelioapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545589373174:android:8de98762255d84ce1b24d7",
+        "android_client_info": {
+          "package_name": "com.micelio.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT0GR592RXnpSZcYfWUuLHziXA4Nhd8rQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545589373174:android:d48bdd1cfb4b722b1b24d7",
+        "android_client_info": {
+          "package_name": "com.miceliobrasil.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT0GR592RXnpSZcYfWUuLHziXA4Nhd8rQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

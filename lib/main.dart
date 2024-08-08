@@ -6,6 +6,8 @@ import 'package:micelio_app/screens/login/login.dart';
 import 'package:micelio_app/screens/passwordRecovery/passwordRecovery.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +15,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  //se currentPlatform for web, não é necessário chamar SharedPreferences, salvar uid no local storage
+
+  if (kIsWeb) {
+    runApp(MyApp(savedUid: null));
+    return;
+  }
 
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String? savedUid = prefs.getString('uid');

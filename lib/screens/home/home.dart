@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:micelio_app/screens/dashboard/dashboard.dart';
+import 'package:micelio_app/screens/priceTables/priceTables.dart';
 import 'package:micelio_app/screens/products/products.dart';
 import 'package:micelio_app/screens/users/users.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -91,6 +92,36 @@ class _HomePageState extends State<HomePage> {
                               onTap: () {
                                 currentPage.value = ProductPage();
                                 activePage.value = "Produtos";
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                MouseRegion(
+                  onEnter: (_) => hoverPage.value = "Tabela de Preços",
+                  onExit: (_) => hoverPage.value = "",
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: hoverPage,
+                    builder: (context, hoverValue, child) {
+                      return ValueListenableBuilder<String>(
+                        valueListenable: activePage,
+                        builder: (context, activeValue, child) {
+                          return Container(
+                            color: hoverValue == "Tabela de Preços" ||
+                                    activeValue == "Tabela de Preços"
+                                ? Colors.grey[800]
+                                : Colors.black,
+                            child: ListTile(
+                              title: const Text(
+                                "Tabela de Preços",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              onTap: () {
+                                currentPage.value = PriceTablesPage();
+                                activePage.value = "Tabela de Preços";
                               },
                             ),
                           );

@@ -74,15 +74,26 @@ class _ProductPageState extends State<ProductPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Produtos'),
+        title: Row(
+          children: [
+            const Text('Produtos'),
+            const SizedBox(width: 10),
+            Text(
+              '(${_filteredProductsList.length})',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
         actions: [
-          if (_isAdmin)
-            IconButton(
+          Tooltip(
+            message: 'Criar novo produto',
+            child: IconButton(
               icon: const Icon(Icons.add),
               onPressed: _showAddDialog,
             ),
-          SizedBox(width: 10),
+          ),
+          const SizedBox(width: 10),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: SizedBox(
@@ -136,20 +147,18 @@ class _ProductPageState extends State<ProductPage> {
                     DataCell(
                       Center(
                           child: Text(
-                        product['netWeight'] >= 1000
-                            ? '${product['netWeight'] / 1000}kg'
-                            : '${product['netWeight']}g',
+                        //se tiver netWeight e for maior que 1000, exibir em kg, senão em g
+                        product['netWeight'] != null &&
+                                product['netWeight'] > 1000
+                            ? '${product['netWeight'] / 1000} kg'
+                            : '${product['netWeight']} g',
                       )),
                     ),
                     DataCell(
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: _isAdmin
-                            ? _adminActions(product.id,
-                                product.data() as Map<String, dynamic>)
-                            : _userActions(product.id,
-                                product.data() as Map<String, dynamic>),
-                      ),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: _adminActions(product.id,
+                              product.data() as Map<String, dynamic>)),
                     ),
                   ],
                 );
@@ -178,15 +187,20 @@ class _ProductPageState extends State<ProductPage> {
   List<Widget> _adminActions(
       String documentId, Map<String, dynamic> productData) {
     return [
-      IconButton(
-        icon: const Icon(Icons.edit),
-        onPressed: () => _showEditDialog(documentId, productData),
+      Tooltip(
+        message: 'Editar',
+        child: IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: () => _showEditDialog(documentId, productData),
+        ),
       ),
-      if (productData['status'] != 'deleted')
-        IconButton(
+      Tooltip(
+        message: 'Deletar',
+        child: IconButton(
           icon: const Icon(Icons.delete),
           onPressed: () => _deleteProduct(documentId),
         ),
+      ),
     ];
   }
 
@@ -223,7 +237,7 @@ class _ProductPageState extends State<ProductPage> {
         onEdit: () => _fetchProducts(),
         onEditResult: (result) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result ?? 'Usuário editado com sucesso')),
+            SnackBar(content: Text(result ?? 'Produto editado com sucesso')),
           );
         },
         documentId: documentId,
@@ -242,7 +256,7 @@ class _ProductPageState extends State<ProductPage> {
         onEditResult: (result) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(result ?? 'Usuário visualizado com sucesso')),
+                content: Text(result ?? 'Produto visualizado com sucesso')),
           );
         },
         documentId: documentId,

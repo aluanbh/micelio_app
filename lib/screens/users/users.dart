@@ -5,7 +5,6 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:micelio_app/screens/users/components/add_dialog.dart';
 import 'package:micelio_app/screens/users/components/edit_dialog.dart';
-import 'package:micelio_app/screens/users/components/show_dialog.dart';
 
 enum UserFilter { onlyActive, deleted, all }
 
@@ -88,12 +87,22 @@ class _UserPageState extends State<UserPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Usuários'),
+        title: Row(
+          children: [
+            const Text('Usuários'),
+            const SizedBox(width: 10),
+            Text(
+              '(${_userFilter == UserFilter.deleted ? _deletedUsers.length : _activeUsers.length})',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
         actions: [
-          if (_isAdmin) ...[
-            Container(
-              padding: const EdgeInsets.only(right: 10),
+          Container(
+            padding: const EdgeInsets.only(right: 10),
+            child: Tooltip(
+              message: 'Criar novo usuário',
               child: IconButton(
                 style: ButtonStyle(
                   backgroundColor: MaterialStateProperty.all(Colors.white),
@@ -104,21 +113,21 @@ class _UserPageState extends State<UserPage> {
                 icon: const Icon(Icons.add),
               ),
             ),
-            SizedBox(width: 10),
-            Row(
-              children: [
-                Text(
-                  'Exibir usuários deletados',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                Switch(
-                  value: _userFilter == UserFilter.deleted,
-                  onChanged: (value) => setState(() => _userFilter =
-                      value ? UserFilter.deleted : UserFilter.onlyActive),
-                ),
-              ],
-            ),
-          ],
+          ),
+          SizedBox(width: 10),
+          Row(
+            children: [
+              Text(
+                'Exibir usuários deletados',
+                style: const TextStyle(fontSize: 16),
+              ),
+              Switch(
+                value: _userFilter == UserFilter.deleted,
+                onChanged: (value) => setState(() => _userFilter =
+                    value ? UserFilter.deleted : UserFilter.onlyActive),
+              ),
+            ],
+          ),
         ],
       ),
       body: _loading
@@ -136,18 +145,18 @@ class _UserPageState extends State<UserPage> {
                       ),
                       DataColumn2(
                         label: Text('CPF'),
-                        size: ColumnSize.L,
+                        size: ColumnSize.S,
                       ),
                       DataColumn2(
                         label: Text('Telefone'),
-                        size: ColumnSize.L,
+                        size: ColumnSize.S,
                       ),
                       DataColumn2(
                         label: Text('Email'),
                         size: ColumnSize.L,
                       ),
                       DataColumn2(
-                        label: Text('Ações'),
+                        label: Center(child: Text('Ações')),
                         size: ColumnSize.S,
                       ),
                     ],
@@ -187,9 +196,11 @@ class _UserPageState extends State<UserPage> {
                             DataCell(Text(user['email'])),
                             DataCell(
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  if (_isAdmin) ...[
-                                    IconButton(
+                                  Tooltip(
+                                    message: 'Editar',
+                                    child: IconButton(
                                       onPressed: () {
                                         _showEditDialog(
                                             user.id,
@@ -198,9 +209,12 @@ class _UserPageState extends State<UserPage> {
                                       },
                                       icon: const Icon(Icons.edit),
                                     ),
-                                    //nao exibir botao de deletar se o switch estiver ativado
-                                    if (_userFilter != UserFilter.deleted)
-                                      IconButton(
+                                  ),
+                                  //nao exibir botao de deletar se o switch estiver ativado
+                                  if (_userFilter != UserFilter.deleted)
+                                    Tooltip(
+                                      message: 'Deletar',
+                                      child: IconButton(
                                         onPressed: () {
                                           _deleteUser(user.id);
                                           ScaffoldMessenger.of(context)
@@ -212,26 +226,18 @@ class _UserPageState extends State<UserPage> {
                                         },
                                         icon: const Icon(Icons.delete),
                                       ),
+                                    ),
 
-                                    if (user['status'] == 'deleted')
-                                      IconButton(
+                                  if (user['status'] == 'deleted')
+                                    Tooltip(
+                                      message: 'Restaurar',
+                                      child: IconButton(
                                         onPressed: () {
                                           _restoreUser(user.id);
                                         },
                                         icon: const Icon(Icons.restore),
                                       ),
-                                  ],
-                                  if (!_isAdmin) ...[
-                                    IconButton(
-                                      onPressed: () {
-                                        _showUserDetailsDialog(
-                                            user.id as String,
-                                            user.data()
-                                                as Map<String, dynamic>);
-                                      },
-                                      icon: const Icon(Icons.remove_red_eye),
                                     ),
-                                  ],
                                 ],
                               ),
                             ),
@@ -291,32 +297,6 @@ class _UserPageState extends State<UserPage> {
     final result = await showDialog<String?>(
       context: context,
       builder: (context) => EditDialog(
-        onEdit: () {
-          setState(() {});
-        },
-        onEditResult: (result) {
-          if (result != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(result)),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Usuário editado com sucesso')),
-            );
-          }
-          _fetchUsers(); // Atualizar a lista de usuários após editar
-        },
-        documentId: documentId,
-        values: values,
-      ),
-    );
-  }
-
-  void _showUserDetailsDialog(
-      String documentId, Map<String, dynamic> values) async {
-    final result = await showDialog<String?>(
-      context: context,
-      builder: (context) => ShowDialog(
         onEdit: () {
           setState(() {});
         },

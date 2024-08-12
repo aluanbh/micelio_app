@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:micelio_app/components/mouse_region_item.dart';
 import 'package:micelio_app/screens/dashboard/dashboard.dart';
 import 'package:micelio_app/screens/priceTables/priceTables.dart';
 import 'package:micelio_app/screens/products/products.dart';
+import 'package:micelio_app/screens/stock/stock.dart';
 import 'package:micelio_app/screens/users/users.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,159 +42,53 @@ class _HomePageState extends State<HomePage> {
                     'assets/images/logoMiceliobranca.png',
                   ),
                 ),
-                MouseRegion(
-                  onEnter: (_) => hoverPage.value = "Dashboard",
-                  onExit: (_) => hoverPage.value = "",
-                  child: ValueListenableBuilder<String>(
-                    valueListenable: hoverPage,
-                    builder: (context, hoverValue, child) {
-                      return ValueListenableBuilder<String>(
-                        valueListenable: activePage,
-                        builder: (context, activeValue, child) {
-                          return Container(
-                            color: hoverValue == "Dashboard" ||
-                                    activeValue == "Dashboard"
-                                ? Colors.grey[800]
-                                : Colors.black,
-                            child: ListTile(
-                              title: const Text(
-                                "Dashboard",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onTap: () {
-                                currentPage.value = DashbordPage();
-                                activePage.value = "Dashboard";
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                CustomMouseRegion(
+                  hoverText: "Dashboard",
+                  activeText: "Dashboard",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: DashbordPage(),
                 ),
-                MouseRegion(
-                  onEnter: (_) => hoverPage.value = "Produtos",
-                  onExit: (_) => hoverPage.value = "",
-                  child: ValueListenableBuilder<String>(
-                    valueListenable: hoverPage,
-                    builder: (context, hoverValue, child) {
-                      return ValueListenableBuilder<String>(
-                        valueListenable: activePage,
-                        builder: (context, activeValue, child) {
-                          return Container(
-                            color: hoverValue == "Produtos" ||
-                                    activeValue == "Produtos"
-                                ? Colors.grey[800]
-                                : Colors.black,
-                            child: ListTile(
-                              title: const Text(
-                                "Produtos",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onTap: () {
-                                currentPage.value = ProductPage();
-                                activePage.value = "Produtos";
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                CustomMouseRegion(
+                  hoverText: "Produtos",
+                  activeText: "Produtos",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: ProductPage(),
                 ),
-                MouseRegion(
-                  onEnter: (_) => hoverPage.value = "Tabela de Preços",
-                  onExit: (_) => hoverPage.value = "",
-                  child: ValueListenableBuilder<String>(
-                    valueListenable: hoverPage,
-                    builder: (context, hoverValue, child) {
-                      return ValueListenableBuilder<String>(
-                        valueListenable: activePage,
-                        builder: (context, activeValue, child) {
-                          return Container(
-                            color: hoverValue == "Tabela de Preços" ||
-                                    activeValue == "Tabela de Preços"
-                                ? Colors.grey[800]
-                                : Colors.black,
-                            child: ListTile(
-                              title: const Text(
-                                "Tabela de Preços",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onTap: () {
-                                currentPage.value = PriceTablesPage();
-                                activePage.value = "Tabela de Preços";
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                CustomMouseRegion(
+                  hoverText: "Tabela de Preços",
+                  activeText: "Tabela de Preços",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: PriceTablesPage(),
                 ),
-                MouseRegion(
-                  onEnter: (_) => hoverPage.value = "Usuários",
-                  onExit: (_) => hoverPage.value = "",
-                  child: ValueListenableBuilder<String>(
-                    valueListenable: hoverPage,
-                    builder: (context, hoverValue, child) {
-                      return ValueListenableBuilder<String>(
-                        valueListenable: activePage,
-                        builder: (context, activeValue, child) {
-                          return Container(
-                            color: hoverValue == "Usuários" ||
-                                    activeValue == "Usuários"
-                                ? Colors.grey[800]
-                                : Colors.black,
-                            child: ListTile(
-                              title: const Text(
-                                "Usuários",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onTap: () {
-                                currentPage.value = UserPage();
-                                activePage.value = "Usuários";
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                CustomMouseRegion(
+                  hoverText: "Estoque",
+                  activeText: "Estoque",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: StockPage(),
                 ),
-                MouseRegion(
-                  onEnter: (_) => hoverPage.value = "Logout",
-                  onExit: (_) => hoverPage.value = "",
-                  child: ValueListenableBuilder<String>(
-                    valueListenable: hoverPage,
-                    builder: (context, hoverValue, child) {
-                      return ValueListenableBuilder<String>(
-                        valueListenable: activePage,
-                        builder: (context, activeValue, child) {
-                          return Container(
-                            color: hoverValue == "Logout" ||
-                                    activeValue == "Logout"
-                                ? Colors.grey[800]
-                                : Colors.black,
-                            child: ListTile(
-                              title: const Text(
-                                "Logout",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onTap: () async {
-                                FirebaseAuth.instance.signOut();
-                                SharedPreferences prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.clear();
-                                Navigator.pushReplacementNamed(
-                                    context, "/login");
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                CustomMouseRegion(
+                  hoverText: "Usuários",
+                  activeText: "Usuários",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: UserPage(),
+                ),
+                CustomMouseRegion(
+                  hoverText: "Logout",
+                  activeText: "Logout",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: Container(), // Substitua por sua página de logout
                 ),
               ],
             ),

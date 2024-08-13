@@ -3,21 +3,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:micelio_app/screens/users/components/add_dialog.dart';
-import 'package:micelio_app/screens/users/components/edit_dialog.dart';
+import 'package:micelio_app/screens/clients/components/add_dialog.dart';
+import 'package:micelio_app/screens/clients/components/edit_dialog.dart';
 
-enum UserFilter { onlyActive, deleted, all }
-
-class UserPage extends StatefulWidget {
-  const UserPage({Key? key}) : super(key: key);
+class ClientsPage extends StatefulWidget {
+  const ClientsPage({Key? key}) : super(key: key);
 
   @override
-  State<UserPage> createState() => _UserPageState();
+  State<ClientsPage> createState() => _ClientsPageState();
 }
 
-class _UserPageState extends State<UserPage> {
+class _ClientsPageState extends State<ClientsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final CollectionReference _users;
+  late final CollectionReference _clients;
   final MaskTextInputFormatter _phoneFormatter = MaskTextInputFormatter(
     mask: '(##) #####-####',
     filter: {"#": RegExp(r'[0-9]')},
@@ -26,21 +24,21 @@ class _UserPageState extends State<UserPage> {
     mask: '###.###.###-##',
     filter: {"#": RegExp(r'[0-9]')},
   );
-  UserFilter _userFilter = UserFilter.onlyActive;
-  bool _isAdmin = false;
 
-  List<DocumentSnapshot> _allUsers = [];
-  List<DocumentSnapshot> _activeUsers = [];
-  List<DocumentSnapshot> _deletedUsers = [];
+  List<DocumentSnapshot> _clientList = [];
+  List<DocumentSnapshot> _filteredClientsList = [];
+
   bool _loading = true;
-
-  _UserPageState() : _users = FirebaseFirestore.instance.collection('users');
+  bool _isAdmin = false;
+  String _searchQuery = '';
+  _ClientsPageState()
+      : _clients = FirebaseFirestore.instance.collection('clients');
 
   @override
   void initState() {
-    super.initState();
     _checkIfUserIsAdmin();
-    _fetchUsers();
+    super.initState();
+    _fetchClients();
   }
 
   Future<void> _checkIfUserIsAdmin() async {
@@ -58,46 +56,68 @@ class _UserPageState extends State<UserPage> {
     }
   }
 
-  void _fetchUsers() async {
+  void _fetchClients() async {
     setState(() {
       _loading = true;
     });
 
     try {
-      QuerySnapshot allUsersSnapshot = await _users.get();
-      _allUsers = allUsersSnapshot.docs;
+      final snapshot = await _clients.orderBy('name').get();
 
-      QuerySnapshot deletedUsersSnapshot =
-          await _users.where('status', isEqualTo: 'deleted').get();
-      _deletedUsers = deletedUsersSnapshot.docs;
+      if (!_isAdmin) {
+        final user = FirebaseAuth.instance.currentUser;
+        _clientList = snapshot.docs.where((client) {
+          return (client.data() as Map<String, dynamic>)['owner'] == user?.uid;
+        }).toList();
+      } else {
+        _clientList = snapshot.docs;
+      }
 
-      QuerySnapshot activeUsersSnapshot =
-          await _users.where('status', isNotEqualTo: 'deleted').get();
-      _activeUsers = activeUsersSnapshot.docs;
-
-      print('Usuários ativos: ${_activeUsers.length}');
+      _filterClients();
     } catch (e) {
-      print('Erro ao buscar usuários: $e');
+      print('Erro ao buscar clientes: $e');
+    } finally {
+      setState(() {
+        _loading = false;
+      });
     }
+  }
 
+  void _filterClients() {
     setState(() {
-      _loading = false;
+      _filteredClientsList = _clientList.where((client) {
+        final data = client.data() as Map<String, dynamic>;
+        final name = data['name'] as String;
+        final email = data['email'] as String;
+
+        // Tratar CPF
+        final cpfTemp = data['cpf'] as String? ?? '';
+        final cpf = cpfTemp.replaceAll(RegExp(r'[.-]'), '');
+
+        // Tratar CNPJ
+        final cnpjTemp = data['cnpj'] as String? ?? '';
+        final cnpj = cnpjTemp.replaceAll(RegExp(r'[./-]'), '');
+
+        // Verificar se o campo CPF ou CNPJ existe e deve ser incluído na busca
+        final cpfCnpj = cpf.isNotEmpty ? cpf : cnpj;
+
+        return name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            cpfCnpj.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            email.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    List<DocumentSnapshot> users =
-        _userFilter == UserFilter.deleted ? _deletedUsers : _activeUsers;
-
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Usuários'),
+            const Text('Clientes'),
             const SizedBox(width: 10),
             Text(
-              '(${_userFilter == UserFilter.deleted ? _deletedUsers.length : _activeUsers.length})',
+              '(${_filteredClientsList.length})',
               style: const TextStyle(fontSize: 16),
             ),
           ],
@@ -107,7 +127,7 @@ class _UserPageState extends State<UserPage> {
           Container(
             padding: const EdgeInsets.only(right: 10),
             child: Tooltip(
-              message: 'Criar novo usuário',
+              message: 'Criar novo cliente',
               child: IconButton(
                 style: ButtonStyle(
                   backgroundColor: MaterialStateProperty.all(Colors.white),
@@ -120,18 +140,23 @@ class _UserPageState extends State<UserPage> {
             ),
           ),
           SizedBox(width: 10),
-          Row(
-            children: [
-              Text(
-                'Exibir usuários deletados',
-                style: const TextStyle(fontSize: 16),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SizedBox(
+              width: 200,
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Buscar...',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                    _filterClients();
+                  });
+                },
               ),
-              Switch(
-                value: _userFilter == UserFilter.deleted,
-                onChanged: (value) => setState(() => _userFilter =
-                    value ? UserFilter.deleted : UserFilter.onlyActive),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -149,8 +174,8 @@ class _UserPageState extends State<UserPage> {
                         size: ColumnSize.L,
                       ),
                       DataColumn2(
-                        label: Text('CPF'),
-                        size: ColumnSize.S,
+                        label: Text('CPF / CNPJ'),
+                        size: ColumnSize.M,
                       ),
                       DataColumn2(
                         label: Text('Telefone'),
@@ -166,20 +191,36 @@ class _UserPageState extends State<UserPage> {
                       ),
                     ],
                     rows: List.generate(
-                      users.length,
+                      _filteredClientsList.length,
                       (index) {
-                        final user = users[index];
+                        final user = _filteredClientsList[index];
                         return DataRow(
                           cells: [
                             DataCell(Text(user['name'])),
                             DataCell(
-                              user.data() is Map<String, dynamic> &&
-                                      (user.data() as Map<String, dynamic>)
-                                          .containsKey('cpf') &&
-                                      user['cpf'] != null
-                                  ? Text(
-                                      _formatCpf(user['cpf']),
-                                    )
+                              user.data() is Map<String, dynamic>
+                                  ? (() {
+                                      final data =
+                                          user.data() as Map<String, dynamic>;
+                                      final cpf = data['cpf'] as String?;
+                                      final cnpj = data['cnpj'] as String?;
+                                      final cep = data['cep'] as String?;
+
+                                      if (cpf != null && cpf.isNotEmpty) {
+                                        return Text(_formatCpf(cpf));
+                                      } else if (cnpj != null &&
+                                          cnpj.isNotEmpty) {
+                                        return Text(_formatCnpj(cnpj));
+                                      } else if (cep != null &&
+                                          cep.isNotEmpty) {
+                                        return Text(_formatCep(cep));
+                                      } else {
+                                        return const Text(
+                                          'Sem registro',
+                                          style: TextStyle(color: Colors.grey),
+                                        );
+                                      }
+                                    })()
                                   : const Text(
                                       'Sem registro',
                                       style: TextStyle(color: Colors.grey),
@@ -216,33 +257,33 @@ class _UserPageState extends State<UserPage> {
                                     ),
                                   ),
                                   //nao exibir botao de deletar se o switch estiver ativado
-                                  if (_userFilter != UserFilter.deleted)
-                                    Tooltip(
-                                      message: 'Deletar',
-                                      child: IconButton(
-                                        onPressed: () {
-                                          _deleteUser(user.id);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    'Usuário deletado com sucesso')),
-                                          );
-                                        },
-                                        icon: const Icon(Icons.delete),
-                                      ),
-                                    ),
+                                  // if (_clientFilter != ClientFilter.deleted)
+                                  //   Tooltip(
+                                  //     message: 'Deletar',
+                                  //     child: IconButton(
+                                  //       onPressed: () {
+                                  //         _deleteUser(user.id);
+                                  //         ScaffoldMessenger.of(context)
+                                  //             .showSnackBar(
+                                  //           const SnackBar(
+                                  //               content: Text(
+                                  //                   'Usuário deletado com sucesso')),
+                                  //         );
+                                  //       },
+                                  //       icon: const Icon(Icons.delete),
+                                  //     ),
+                                  //   ),
 
-                                  if (user['status'] == 'deleted')
-                                    Tooltip(
-                                      message: 'Restaurar',
-                                      child: IconButton(
-                                        onPressed: () {
-                                          _restoreUser(user.id);
-                                        },
-                                        icon: const Icon(Icons.restore),
-                                      ),
-                                    ),
+                                  // if (user['status'] == 'deleted')
+                                  //   Tooltip(
+                                  //     message: 'Restaurar',
+                                  //     child: IconButton(
+                                  //       onPressed: () {
+                                  //         _restoreUser(user.id);
+                                  //       },
+                                  //       icon: const Icon(Icons.restore),
+                                  //     ),
+                                  //   ),
                                 ],
                               ),
                             ),
@@ -292,7 +333,7 @@ class _UserPageState extends State<UserPage> {
               const SnackBar(content: Text('Usuário adicionado com sucesso')),
             );
           }
-          _fetchUsers(); // Atualizar a lista de usuários após adicionar
+          _fetchClients(); // Atualizar a lista de usuários após adicionar
         },
       ),
     );
@@ -312,10 +353,10 @@ class _UserPageState extends State<UserPage> {
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Usuário editado com sucesso')),
+              const SnackBar(content: Text('Cliente editado com sucesso')),
             );
           }
-          _fetchUsers(); // Atualizar a lista de usuários após editar
+          _fetchClients(); // Atualizar a lista de clientes após editar
         },
         documentId: documentId,
         values: values,
@@ -325,29 +366,47 @@ class _UserPageState extends State<UserPage> {
 
   void _deleteUser(String documentId) async {
     try {
-      await _firestore.collection('users').doc(documentId).update({
+      await _firestore.collection('clients').doc(documentId).update({
         'status': 'deleted',
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário deletado com sucesso')),
+        const SnackBar(content: Text('Cliente deletado com sucesso')),
       );
-      _fetchUsers(); // Atualizar a lista de usuários após deletar
+      _fetchClients(); // Atualizar a lista de clientes após deletar
     } catch (e) {
-      print('Erro ao deletar usuário: $e');
+      print('Erro ao deletar cliente: $e');
     }
   }
 
   void _restoreUser(String documentId) async {
     try {
-      await _firestore.collection('users').doc(documentId).update({
+      await _firestore.collection('clients').doc(documentId).update({
         'status': 'active',
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário restaurado com sucesso')),
+        const SnackBar(content: Text('Cliente restaurado com sucesso')),
       );
-      _fetchUsers(); // Atualizar a lista de usuários após restaurar
+      _fetchClients(); // Atualizar a lista de clientes após restaurar
     } catch (e) {
-      print('Erro ao restaurar usuário: $e');
+      print('Erro ao restaurar cliente: $e');
     }
+  }
+
+  String _formatCnpj(String cnpj) {
+    if (cnpj.isEmpty) {
+      return '';
+    }
+    return cnpj.replaceAllMapped(
+        RegExp(r'^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$'),
+        (match) =>
+            '${match[1]}.${match[2]}.${match[3]}/${match[4]}-${match[5]}');
+  }
+
+  String _formatCep(String cep) {
+    if (cep.isEmpty) {
+      return '';
+    }
+    return cep.replaceAllMapped(
+        RegExp(r'^(\d{5})(\d{3})$'), (match) => '${match[1]}-${match[2]}');
   }
 }

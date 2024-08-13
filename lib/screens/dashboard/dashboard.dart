@@ -30,7 +30,6 @@ class _DashbordPageState extends State<DashbordPage> {
     bool savedIsAdmin = prefs.getBool('isAdmin') ?? false;
     String savedPhone = prefs.getString('phone') ?? "";
 
-    print("isAdmin: $isAdmin");
     setState(() {
       uid = savedUid;
       name = savedName;

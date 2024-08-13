@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:micelio_app/components/mouse_region_item.dart';
+import 'package:micelio_app/screens/clients/clients.dart';
 import 'package:micelio_app/screens/dashboard/dashboard.dart';
 import 'package:micelio_app/screens/priceTables/priceTables.dart';
 import 'package:micelio_app/screens/products/products.dart';
@@ -73,6 +74,14 @@ class _HomePageState extends State<HomePage> {
                   activePage: activePage,
                   currentPage: currentPage,
                   page: StockPage(),
+                ),
+                CustomMouseRegion(
+                  hoverText: "Clientes",
+                  activeText: "Clientes",
+                  hoverPage: hoverPage,
+                  activePage: activePage,
+                  currentPage: currentPage,
+                  page: ClientsPage(),
                 ),
                 CustomMouseRegion(
                   hoverText: "Usuários",

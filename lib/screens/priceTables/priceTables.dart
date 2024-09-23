@@ -15,10 +15,12 @@ class PriceTablesPage extends StatefulWidget {
 }
 
 class _PriceTablesPageState extends State<PriceTablesPage> {
+  late final CollectionReference _users;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late final CollectionReference _products;
   late final CollectionReference _priceTables;
-
-  bool _loading = true;
+  bool _isAdmin = false;
+  bool _loading = false;
   bool _isProcessing = false; // Controle para operações em andamento
   String _searchQuery = '';
   List<DocumentSnapshot> _productsList = [];
@@ -28,12 +30,30 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
 
   _PriceTablesPageState()
       : _products = FirebaseFirestore.instance.collection('products'),
-        _priceTables = FirebaseFirestore.instance.collection('priceTables');
+        _priceTables = FirebaseFirestore.instance.collection('priceTables'),
+        _users = FirebaseFirestore.instance.collection('users');
 
   @override
   void initState() {
+    _checkIfUserIsAdmin();
     super.initState();
     _fetchProducts();
+    _loading = true;
+  }
+
+  Future<void> _checkIfUserIsAdmin() async {
+    setState(() {
+      _loading = true;
+    });
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      setState(() {
+        _isAdmin = userDoc.data()?['isAdmin'] ?? false;
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _fetchProducts() async {
@@ -44,12 +64,28 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
     try {
       final snapshot = await _products.orderBy('name').get();
       final snapshotTables = await _priceTables.orderBy('name').get();
-      setState(() {
-        _productsList = snapshot.docs;
-        _priceTablesList = snapshotTables.docs;
-        _filterPriceTables();
-        _loading = false;
-      });
+      if (!_isAdmin) {
+        final userUid = FirebaseAuth.instance.currentUser!.uid;
+        final userTables = snapshotTables.docs
+            .where((table) => table['userUid'] == userUid)
+            .toList();
+        setState(() {
+          _productsList = snapshot.docs;
+          _priceTablesList = userTables;
+          _filterPriceTables();
+          _loading = false;
+        });
+        return;
+      } else {
+        //se for admin, mostrar todas as tabelas de preco
+        setState(() {
+          _productsList = snapshot.docs;
+          _priceTablesList = snapshotTables.docs;
+          _filterPriceTables();
+          _loading = false;
+        });
+        return;
+      }
     } catch (e) {
       print('Erro ao buscar produtos ou tabelas: $e');
       setState(() {
@@ -69,8 +105,33 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
     });
   }
 
+  //funcao para buscar o nome do usuario que criou a tabela de precos
+  Future<Map<String, dynamic>> _getUserNameAndAdminStatus(
+      String userUid) async {
+    final userDoc = await _users.doc(userUid).get();
+    final data = userDoc.data() as Map<String, dynamic>?;
+    final userName = data?['name'] ?? 'Usuário não encontrado';
+    final isAdmin = data?['isAdmin'] ?? false;
+
+    return {
+      'name': userName,
+      'isAdmin': isAdmin,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Filtrar as tabelas de preço de acordo com o valor de _isAdmin
+    final adminTables = _filteredPriceTablesList.where((table) {
+      final data = table.data() as Map<String, dynamic>;
+      return data['isAdmin'] == true;
+    }).toList();
+
+    final userTables = _filteredPriceTablesList.where((table) {
+      final data = table.data() as Map<String, dynamic>;
+      return data['isAdmin'] == false;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -115,105 +176,280 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : DataTable2(
-              columns: const [
-                DataColumn2(
-                  label: Text('Nome'),
-                  size: ColumnSize.L,
-                ),
-                DataColumn2(
-                  label: Center(child: Text('N.º de Produtos')),
-                  size: ColumnSize.S,
-                ),
-                DataColumn2(
-                  label: Center(child: Text('Preenchidos')),
-                  size: ColumnSize.S,
-                ),
-                DataColumn2(
-                  label: Center(child: Text('Status')),
-                  size: ColumnSize.S,
-                ),
-                DataColumn2(
-                  label: Center(child: Text('Ações')),
-                  size: ColumnSize.M,
-                ),
-              ],
-              rows: List.generate(_filteredPriceTablesList.length, (index) {
-                final priceTable = _filteredPriceTablesList[index];
-                final productCount = priceTable['products'].length;
-                final filledCount = priceTable['products']
-                    .where((product) => product['price'] != null)
-                    .length;
-                return DataRow(
-                  cells: [
-                    DataCell(Text(priceTable['name'])),
-                    DataCell(Center(child: Text(productCount.toString()))),
-                    DataCell(Center(child: Text(filledCount.toString()))),
-                    DataCell(Center(
-                        child:
-                            Text(priceTable['status'] ? 'Ativo' : 'Inativo'))),
-                    DataCell(
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Tooltip(
-                            message: 'Editar',
-                            child: IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () {
-                                setState(() {
-                                  _showEditDialog(
-                                      priceTable.id,
-                                      priceTable.data()
-                                          as Map<String, dynamic>);
-                                });
+          : Column(
+              children: [
+                //se _isAdmin for true e houver tabelas de preco, mostrar a tabela de preco do admin
+                if (_isAdmin)
+                  Expanded(
+                    child: DataTable2(
+                      columns: const [
+                        DataColumn2(
+                          label: Text('Nome'),
+                          size: ColumnSize.L,
+                        ),
+                        DataColumn2(
+                          label: Center(child: Text('N.º de Produtos')),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(
+                          label: Center(child: Text('Preenchidos')),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(
+                          label: Center(child: Text('Status')),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(
+                          label: Center(child: Text('Ações')),
+                          size: ColumnSize.M,
+                        ),
+                      ],
+                      rows: List.generate(adminTables.length, (index) {
+                        final priceTable = adminTables[index];
+                        final productCount = priceTable['products'].length;
+
+                        final filledCount = priceTable['products']
+                            .where((product) => product['price'] != null)
+                            .length;
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              FutureBuilder<Map<String, dynamic>>(
+                                future: _getUserNameAndAdminStatus(
+                                    priceTable['userUid'] as String),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Text('Carregando...');
+                                  } else if (snapshot.hasError) {
+                                    return const Text('Erro ao carregar nome');
+                                  } else {
+                                    final userData = snapshot.data ??
+                                        {
+                                          'name': 'Usuário não encontrado',
+                                          'isAdmin': false
+                                        };
+                                    final userName = userData['name'] as String;
+                                    final isAdmin = userData['isAdmin'] as bool;
+
+                                    return Text(
+                                      '${priceTable['name']} - $userName',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                            DataCell(
+                                Center(child: Text(productCount.toString()))),
+                            DataCell(
+                                Center(child: Text(filledCount.toString()))),
+                            DataCell(Center(
+                                child: Text(priceTable['status']
+                                    ? 'Ativo'
+                                    : 'Inativo'))),
+                            DataCell(
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Tooltip(
+                                    message: 'Editar',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      onPressed: () {
+                                        setState(() {
+                                          _showEditDialog(
+                                              priceTable.id,
+                                              priceTable.data()
+                                                  as Map<String, dynamic>);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    message: 'Deletar',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.delete),
+                                      onPressed: _isProcessing
+                                          ? null
+                                          : () {
+                                              _deletePriceTable(priceTable.id);
+                                            },
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    message: 'Atualizar Produtos',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.refresh),
+                                      onPressed: _isProcessing
+                                          ? null
+                                          : () {
+                                              _updatePriceTableProducts(
+                                                  priceTable.id);
+                                            },
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    message: 'Clonar',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.copy),
+                                      onPressed: () {
+                                        _clonePriceTable(priceTable.id);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+                if (_isAdmin)
+                  Text('Tabelas de Preço do Distribuidor',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      )),
+                Expanded(
+                  child: DataTable2(
+                    columns: const [
+                      DataColumn2(
+                        label: Text('Nome'),
+                        size: ColumnSize.L,
+                      ),
+                      DataColumn2(
+                        label: Center(child: Text('N.º de Produtos')),
+                        size: ColumnSize.S,
+                      ),
+                      DataColumn2(
+                        label: Center(child: Text('Preenchidos')),
+                        size: ColumnSize.S,
+                      ),
+                      DataColumn2(
+                        label: Center(child: Text('Status')),
+                        size: ColumnSize.S,
+                      ),
+                      DataColumn2(
+                        label: Center(child: Text('Ações')),
+                        size: ColumnSize.M,
+                      ),
+                    ],
+                    rows: List.generate(userTables.length, (index) {
+                      final priceTable = userTables[index];
+                      final productCount = priceTable['products'].length;
+
+                      final filledCount = priceTable['products']
+                          .where((product) => product['price'] != null)
+                          .length;
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            FutureBuilder<Map<String, dynamic>>(
+                              future: _getUserNameAndAdminStatus(
+                                  priceTable['userUid'] as String),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Text('Carregando...');
+                                } else if (snapshot.hasError) {
+                                  return const Text('Erro ao carregar nome');
+                                } else {
+                                  final userData = snapshot.data ??
+                                      {
+                                        'name': 'Usuário não encontrado',
+                                        'isAdmin': false
+                                      };
+                                  final userName = userData['name'] as String;
+                                  final isAdmin = userData['isAdmin'] as bool;
+
+                                  return Text(
+                                    '${priceTable['name']} - $userName',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           ),
-                          Tooltip(
-                            message: 'Deletar',
-                            child: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: _isProcessing
-                                  ? null
-                                  : () {
-                                      _deletePriceTable(priceTable.id);
+                          DataCell(
+                              Center(child: Text(productCount.toString()))),
+                          DataCell(Center(child: Text(filledCount.toString()))),
+                          DataCell(Center(
+                              child: Text(
+                                  priceTable['status'] ? 'Ativo' : 'Inativo'))),
+                          DataCell(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Tooltip(
+                                  message: 'Editar',
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () {
+                                      setState(() {
+                                        _showEditDialog(
+                                            priceTable.id,
+                                            priceTable.data()
+                                                as Map<String, dynamic>);
+                                      });
                                     },
-                            ),
-                          ),
-                          Tooltip(
-                            message: 'Atualizar Produtos',
-                            child: IconButton(
-                              icon: const Icon(Icons.refresh),
-                              onPressed: _isProcessing
-                                  ? null
-                                  : () {
-                                      _updatePriceTableProducts(priceTable.id);
-                                    },
-                            ),
-                          ),
-                          Tooltip(
-                            message: 'Clonar',
-                            child: IconButton(
-                              icon: const Icon(Icons.copy),
-                              onPressed: _isProcessing
-                                  ? null
-                                  : () {
+                                  ),
+                                ),
+                                Tooltip(
+                                  message: 'Deletar',
+                                  child: IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: _isProcessing
+                                        ? null
+                                        : () {
+                                            _deletePriceTable(priceTable.id);
+                                          },
+                                  ),
+                                ),
+                                Tooltip(
+                                  message: 'Atualizar Produtos',
+                                  child: IconButton(
+                                    icon: const Icon(Icons.refresh),
+                                    onPressed: _isProcessing
+                                        ? null
+                                        : () {
+                                            _updatePriceTableProducts(
+                                                priceTable.id);
+                                          },
+                                  ),
+                                ),
+                                // if (!_isAdmin)
+                                Tooltip(
+                                  message: 'Clonar',
+                                  child: IconButton(
+                                    icon: const Icon(Icons.copy),
+                                    onPressed: () {
                                       _clonePriceTable(priceTable.id);
                                     },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                );
-              }),
+                      );
+                    }),
+                  ),
+                ),
+              ],
             ),
     );
   }
 
   void _showAddDialog() async {
+    await _checkIfUserIsAdmin();
+    final isAdmin = _isAdmin;
+
     setState(() => _isProcessing = true);
     final result = await showDialog<String?>(
       context: context,
@@ -231,6 +467,7 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
           );
         },
         products: _productsList,
+        isAdmin: isAdmin, // Passe o parâmetro isAdmin para o modal
       ),
     );
   }
@@ -333,11 +570,15 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
 
   //funcao para clonar a tabela de precos com outro nome abrindo uma nova dialog com input
   void _clonePriceTable(String documentId) async {
+    // final isAdmin = _isAdmin;
     setState(() => _isProcessing = true);
     try {
       final doc = await _priceTables.doc(documentId).get();
       final data = doc.data() as Map<String, dynamic>;
       final products = List<Map<String, dynamic>>.from(data['products'] ?? []);
+      final isAdminDatabela = data['isAdmin'] as bool;
+      final userUidDaTabela = data['userUid'] as String;
+
       String name = data['name'] as String;
 
       final newName = await showDialog<String?>(
@@ -383,10 +624,11 @@ class _PriceTablesPageState extends State<PriceTablesPage> {
         } else {
           // Adiciona a nova tabela
           await _priceTables.add({
-            'userUid': FirebaseAuth.instance.currentUser!.uid,
+            'userUid': userUidDaTabela,
             'name': newName,
             'products': products,
             'status': true,
+            'isAdmin': isAdminDatabela,
           });
 
           ScaffoldMessenger.of(context).showSnackBar(

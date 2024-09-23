@@ -236,7 +236,7 @@ class _EditDialogState extends State<EditDialog> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [_cepFormatter],
                     onChanged: (cep) {
-                      if (cep.length == 9) {
+                      if (cep.length == 10) {
                         _buscarCep();
                       }
                     },
@@ -310,7 +310,6 @@ class _EditDialogState extends State<EditDialog> {
           onPressed: () async {
             //se não preencher name, email, cpf ou cnpj se for pessoa jurídica, exibir mensagem de erro
             if (_nameController.text.isEmpty ||
-                _emailController.text.isEmpty ||
                 (_isPj && _cnpjController.text.isEmpty) ||
                 (!_isPj && _cpfController.text.isEmpty)) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -350,10 +349,12 @@ class _EditDialogState extends State<EditDialog> {
         return;
       }
 
+      print('cep: ${_cepController.text}');
       String url = 'https://viacep.com.br/ws/${_cepController.text}/json/';
       final uri = Uri.parse(url);
       final response = await http.get(uri);
 
+      print('response: ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         print('data: $data');
@@ -471,24 +472,37 @@ class _EditDialogState extends State<EditDialog> {
       }
 
       await _clients.doc(widget.documentId).update({
-        'name': _nameController.text,
-        'cpf': _cpfController.text,
+        'name': _nameController.text.isEmpty ? null : _nameController.text,
+        'cpf': _cpfController.text.isEmpty ? null : _cpfController.text,
         'phone': _phoneController.text.isEmpty
             ? null
             : '+55' + _phoneController.text.replaceAll(RegExp(r'[^\d]'), ''),
-        'email': _emailController.text,
-        'cnpj': _cnpjController.text,
-        'stateRegistration': _stateRegistrationController.text,
-        'rg': _rgController.text,
-        'municipalRegistration': _municipalRegistrationController.text,
-        'cep': _cepController.text,
-        'street': _streetController.text,
-        'number': _numberController.text,
-        'complement': _complementController.text,
-        'neighborhood': _neighborhoodController.text,
-        'city': _cityController.text,
-        'state': _stateController.text,
-        'responsible': _responsibleController.text,
+        'email': _emailController.text.isEmpty ? null : _emailController.text,
+        'cnpj': _cnpjController.text.isEmpty ? null : _cnpjController.text,
+        'stateRegistration': _stateRegistrationController.text.isEmpty
+            ? null
+            : _stateRegistrationController.text,
+        'rg': _rgController.text.isEmpty ? null : _rgController.text,
+        'municipalRegistration': _municipalRegistrationController.text.isEmpty
+            ? null
+            : _municipalRegistrationController.text,
+        'cep': _cepController.text.isEmpty ? null : _cepController.text,
+        'street':
+            _streetController.text.isEmpty ? null : _streetController.text,
+        'number':
+            _numberController.text.isEmpty ? null : _numberController.text,
+        'complement': _complementController.text.isEmpty
+            ? null
+            : _complementController.text,
+        'neighborhood': _neighborhoodController.text.isEmpty
+            ? null
+            : _neighborhoodController.text,
+        'city': _cityController.text.isEmpty ? null : _cityController.text,
+        'state': _stateController.text.isEmpty ? null : _stateController.text,
+        'responsible': _responsibleController.text.isEmpty
+            ? null
+            : _responsibleController.text,
+        'isPj': _isPj,
       });
 
       _nameController.clear();

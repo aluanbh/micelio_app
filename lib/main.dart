@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart'
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  print("defaultTargetPlatform: $defaultTargetPlatform");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

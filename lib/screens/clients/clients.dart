@@ -88,7 +88,6 @@ class _ClientsPageState extends State<ClientsPage> {
       _filteredClientsList = _clientList.where((client) {
         final data = client.data() as Map<String, dynamic>;
         final name = data['name'] as String;
-        final email = data['email'] as String;
 
         // Tratar CPF
         final cpfTemp = data['cpf'] as String? ?? '';
@@ -102,8 +101,7 @@ class _ClientsPageState extends State<ClientsPage> {
         final cpfCnpj = cpf.isNotEmpty ? cpf : cnpj;
 
         return name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            cpfCnpj.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            email.toLowerCase().contains(_searchQuery.toLowerCase());
+            cpfCnpj.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
     });
   }
@@ -239,7 +237,17 @@ class _ClientsPageState extends State<ClientsPage> {
                                       style: TextStyle(color: Colors.grey),
                                     ),
                             ),
-                            DataCell(Text(user['email'])),
+                            DataCell(
+                              user.data() is Map<String, dynamic> &&
+                                      (user.data() as Map<String, dynamic>)
+                                          .containsKey('email') &&
+                                      user['email'] != null
+                                  ? Text(user['email'])
+                                  : const Text(
+                                      'Sem registro',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                            ),
                             DataCell(
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -256,23 +264,23 @@ class _ClientsPageState extends State<ClientsPage> {
                                       icon: const Icon(Icons.edit),
                                     ),
                                   ),
-                                  //nao exibir botao de deletar se o switch estiver ativado
-                                  // if (_clientFilter != ClientFilter.deleted)
-                                  //   Tooltip(
-                                  //     message: 'Deletar',
-                                  //     child: IconButton(
-                                  //       onPressed: () {
-                                  //         _deleteUser(user.id);
-                                  //         ScaffoldMessenger.of(context)
-                                  //             .showSnackBar(
-                                  //           const SnackBar(
-                                  //               content: Text(
-                                  //                   'Usuário deletado com sucesso')),
-                                  //         );
-                                  //       },
-                                  //       icon: const Icon(Icons.delete),
-                                  //     ),
-                                  //   ),
+                                  //nao exibir botao de deletar se usuario nao for admin
+                                  if (_isAdmin)
+                                    Tooltip(
+                                      message: 'Deletar',
+                                      child: IconButton(
+                                        onPressed: () {
+                                          _deleteUser(user.id);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                                content: Text(
+                                                    'Usuário deletado com sucesso')),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.delete),
+                                      ),
+                                    ),
 
                                   // if (user['status'] == 'deleted')
                                   //   Tooltip(
@@ -366,9 +374,7 @@ class _ClientsPageState extends State<ClientsPage> {
 
   void _deleteUser(String documentId) async {
     try {
-      await _firestore.collection('clients').doc(documentId).update({
-        'status': 'deleted',
-      });
+      await _firestore.collection('clients').doc(documentId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cliente deletado com sucesso')),
       );

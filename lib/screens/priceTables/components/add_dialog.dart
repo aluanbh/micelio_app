@@ -9,11 +9,13 @@ class AddDialog extends StatefulWidget {
   final Function(String?) onAddResult;
   final Function() onAdd;
   final List<DocumentSnapshot> products;
+  final bool isAdmin; // Adicione este parâmetro
 
   AddDialog({
     required this.onAdd,
     required this.onAddResult,
     required this.products,
+    required this.isAdmin, // Adicione este parâmetro
   });
 
   @override
@@ -87,6 +89,7 @@ class _AddDialogState extends State<AddDialog> {
         'name': name,
         'createdAt': Timestamp.now(),
         'status': _isActive,
+        'isAdmin': widget.isAdmin, // Use o parâmetro isAdmin
         'products': widget.products.map((product) {
           return {
             'uid': product.id,
